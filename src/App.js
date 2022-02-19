@@ -5,10 +5,17 @@ import twitterLogo from "./assets/twitter-logo.svg";
 // Constants
 const TWITTER_HANDLE = "laszlo-ratesic";
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
+// The domain to mint
+const tld = '.ganggang';
+const CONTRACT_ADDRESS = '0x7BafEe73F362C960995eC56e6c81510134A508b2';
+
 
 const App = () => {
 	// State variable storing user wallet
 	const [currentAccount, setCurrentAccount] = useState('');
+  // State data properties
+  const [domain, setDomain] = useState('');
+  const [record, setRecord] = useState('');
 
 	const connectWallet = async () => {
 		try {
@@ -66,6 +73,40 @@ const App = () => {
     </div>
   );
 
+// Domain name/data form
+const renderInputForm = () => {
+  return (
+    <div className="form-container">
+      <div className="first-row">
+        <input
+          type="text"
+          value={domain}
+          placeholder='domain'
+          onChange={event => setDomain(event.target.value)}
+          />
+          <p className="tld"> {tld} </p>
+      </div>
+
+      <input
+        type="text"
+        value={record}
+        placeholder="what ur gang gang shit?"
+        onChange={event => setRecord(event.target.value)}
+      />
+
+      <div className="button-container">
+        <button className="cta-button mint-button" disabled={null} onClick={null}>
+          Mint
+        </button>
+        <button className="cta-button mint-button" disabled={null} onClick={null}>
+          Set data
+        </button>
+      </div>
+
+    </div>
+  );
+}
+
   useEffect(() => {
     checkWallet();
   }, []);
@@ -83,6 +124,7 @@ const App = () => {
         </div>
 
         {!currentAccount && renderNoConnect()}
+        {currentAccount && renderInputForm()}
 
         <div className="footer-container">
           <img alt="Twitter Logo" className="twitter-logo" src={twitterLogo} />
