@@ -9,7 +9,7 @@ const TWITTER_HANDLE = "laszlo-ratesic";
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 // The domain to mint
 const tld = ".ganggang";
-const CONTRACT_ADDRESS = "0x7BafEe73F362C960995eC56e6c81510134A508b2";
+const CONTRACT_ADDRESS = "0x9daC84A90a925cd3f81A19ecb461728F4047cFD1";
 
 const App = () => {
   // State variable storing user wallet
