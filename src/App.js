@@ -3,6 +3,9 @@ import "./styles/App.css";
 import twitterLogo from "./assets/twitter-logo.svg";
 import { ethers } from "ethers";
 import contractABI from './utils/contractABI.json';
+import polygonLogo from './assets/polygonlogo.png';
+import ethLogo from './assets/ethlogo.png';
+import { networks } from './utils/networks';
 
 // Constants
 const TWITTER_HANDLE = "laszlo-ratesic";
@@ -12,6 +15,9 @@ const tld = ".ganggang";
 const CONTRACT_ADDRESS = "0x9daC84A90a925cd3f81A19ecb461728F4047cFD1";
 
 const App = () => {
+  // Stateful variable to store network next to others
+  const [network, setNetwork] = useState('');
+
   // State variable storing user wallet
   const [currentAccount, setCurrentAccount] = useState("");
   // State data properties
@@ -60,6 +66,17 @@ const App = () => {
       setCurrentAccount(account);
     } else {
       console.log("No authorized account found!");
+    }
+
+    // Check the user's network chain ID
+    const chainId = await ethereum.request({ method: 'eth_chainId' });
+    setNetwork(networks[chainId]);
+
+    ethereum.on('chainChanged', handleChainChanged);
+
+    // Reload page when network changes
+    function handleChainChanged(_chainId) {
+      window.location.reload();
     }
   };
 
@@ -155,13 +172,6 @@ const App = () => {
           >
             Mint
           </button>
-          <button
-            className="cta-button mint-button"
-            disabled={null}
-            onClick={null}
-          >
-            Set data
-          </button>
         </div>
       </div>
     );
@@ -179,6 +189,10 @@ const App = () => {
             <div className="left">
               <p className="title">🐱‍🐉 GangGang Name Service</p>
               <p className="subtitle">"It's that gang-gang type shi"</p>
+            </div>
+            <div className="right">
+              <img alt="Network logo" className="logo" src={ network.includes("Polygon") ? polygonLogo : ethLogo } />
+              { currentAccount ? <p> Wallet: {currentAccount.slice(0, 6)}...{currentAccount.slice(-4)} </p> : <p> Not Connected </p> }
             </div>
           </header>
         </div>
