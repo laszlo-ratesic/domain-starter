@@ -5,7 +5,7 @@ import { ethers } from "ethers";
 import contractABI from "./utils/contractABI.json";
 import polygonLogo from "./assets/polygonlogo.png";
 import ethLogo from "./assets/ethlogo.png";
-import { networks } from "./utils/networks";
+import { networks } from "./utils/networks.js";
 
 // Constants
 const TWITTER_HANDLE = "laszlo-ratesic";
@@ -17,12 +17,16 @@ const CONTRACT_ADDRESS = "0x9daC84A90a925cd3f81A19ecb461728F4047cFD1";
 const App = () => {
   // Stateful variable to store network next to others
   const [network, setNetwork] = useState("");
-
   // State variable storing user wallet
   const [currentAccount, setCurrentAccount] = useState("");
   // State data properties
   const [domain, setDomain] = useState("");
   const [record, setRecord] = useState("");
+  // Stateful var to handle editing
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  // For all mints
+  const [mints, setMints] = useState([]);
 
   const connectWallet = async () => {
     try {
@@ -125,12 +129,14 @@ const App = () => {
   // Mint domain function
   const mintDomain = async () => {
     // Don't run if domain is empty
-    if (!domain) {
-      return;
-    }
+    if (!domain) { return }
     // Alert the user if the domain is too short
     if (domain.length < 3) {
       alert("Domain must be at least 3 characters long");
+      return;
+    }
+    if (domain.length > 5) {
+      alert("Domain must be no more than 5 characters long");
       return;
     }
     // Calculate price based on length of domain (based on contract)
@@ -170,6 +176,10 @@ const App = () => {
             "Record set! https://mumbai.polygonscan.com/tx/" + tx.hash
           );
 
+          setTimeout(() => {
+            fetchMints();
+          }, 2000);
+
           setRecord("");
           setDomain("");
         } else {
@@ -180,6 +190,68 @@ const App = () => {
       console.log(error);
     }
   };
+
+  const fetchMints = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI.abi, signer);
+
+        // Get all the domain names from contract
+        const names = await contract.getAllNames();
+
+        // Retrieve record and address for each name
+        const mintRecords = await Promise.all(names.map(async (name) => {
+          const mintRecord = await contract.records(name);
+          const owner = await contract.domains(name);
+          return {
+            id: names.indexOf(name),
+            name: name,
+            record: mintRecord,
+            owner: owner,
+          };
+        }));
+
+        console.log("MINTS FETCHED ", mintRecords);
+        setMints(mintRecords);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
+    if (network === 'Polygon Mumbai Testnet') {
+      fetchMints();
+    }
+  }, [currentAccount, network]);
+
+  const updateDomain = async () => {
+    if (!record || !domain) { return }
+    setLoading(true);
+    console.log("Updating domain", domain, "with record", record);
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI.abi, signer);
+
+        let tx = await contract.setRecord(domain, record);
+        await tx.wait();
+        console.log("Record set https://mumbai.polygonscan.com/tx/"+tx.hash);
+
+        fetchMints();
+        setRecord();
+        setDomain();
+      }
+    } catch(error) {
+      console.log(error);
+    }
+    setLoading(false);
+  }
 
   // Render function if wallet not connected yet
   const renderNoConnect = () => (
@@ -226,14 +298,60 @@ const App = () => {
           onChange={(event) => setRecord(event.target.value)}
         />
 
-        <div className="button-container">
-          <button className="cta-button mint-button" onClick={mintDomain}>
+        {/* If the editing variable is true, return the "Set record" and "Cancel" button */}
+        {editing ? (
+          <div className="button-container">
+            <button className="cta-button mint-button" disabled={loading} onClick={updateDomain}>
+              Set record
+            </button>
+            <button className="cta-button mint-button" onClick={() => {setEditing(false)}}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button className="cta-button mint-button" disabled={loading} onClick={mintDomain}>
             Mint
           </button>
-        </div>
+        )}
       </div>
     );
+  }
+
+  const renderMints = () => {
+    if (currentAccount && mints.length > 0) {
+      return (
+        <div className="mint-container">
+          <p className="subtitle">Recently minted domains!</p>
+          <div className="mint-list">
+            { mints.map((mint, index) => {
+              return (
+                <div className="mint-item" key={index}>
+                  <div className="mint-row">
+                    <a className="link" href={`https://testnets.opensea.io/assets/mumbai/${CONTRACT_ADDRESS}/${mint.id}`} target="_blank" rel="noopener noreferrer">
+                      <p className="underlined">{' '}{mint.name}{tld}{' '}</p>
+                    </a>
+                    {/* If mint.owner is currentAccount, add edit button */}
+                    { mint.owner.toLowerCase() === currentAccount.toLowerCase() ?
+                      <button className="edit-button" onClick={() => editRecord(mint.name)}>
+                        <img className="edit-icon" src="https://img.icons8.com/metro/26/000000/pencil.png" alt="Edit button" />
+                      </button>
+                      :
+                      null
+                      }
+                    </div>
+                <p> {mint.record} </p>
+                </div>)
+            })}
+          </div>
+        </div>);
+    }
   };
+
+  const editRecord = name => {
+    console.log("Editing record for", name);
+    setEditing(true);
+    setDomain(name);
+  }
 
   useEffect(() => {
     checkWallet();
@@ -269,6 +387,7 @@ const App = () => {
 
         {!currentAccount && renderNoConnect()}
         {currentAccount && renderInputForm()}
+        {mints && renderMints()}
 
         <div className="footer-container">
           <img alt="Twitter Logo" className="twitter-logo" src={twitterLogo} />
